@@ -8,6 +8,7 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -c, --cuebot-hostname HOSTNAME  The hostname or IP address of the Cuebot server"
+    echo "  -p, --cuebot-port PORT          The port to connect to on the Cuebot server (default: 8443)"
     echo "  -n, --name NAME                 The name to give to the RQD container (default: rqd01)"
     echo "  -h, --help                      Display this help message"
     exit 0
@@ -15,6 +16,7 @@ show_help() {
 
 # Parse command line arguments
 CUEBOT_HOSTNAME=""
+CUEBOT_PORT="8443"
 RQD_NAME="rqd01"
 
 while [[ $# -gt 0 ]]; do
@@ -22,6 +24,10 @@ while [[ $# -gt 0 ]]; do
     case $key in
         -c|--cuebot-hostname)
             CUEBOT_HOSTNAME="$2"
+            shift 2
+            ;;
+        -p|--cuebot-port)
+            CUEBOT_PORT="$2"
             shift 2
             ;;
         -n|--name)
@@ -59,11 +65,13 @@ fi
 
 # Set environment variables
 export CUEBOT_HOSTNAME="$CUEBOT_HOSTNAME"
+export CUEBOT_PORT="$CUEBOT_PORT"
 export CUE_FS_ROOT="$CUE_FS_ROOT"
 
 echo "RQD Configuration Summary:"
 echo "=========================="
 echo "Cuebot Hostname: $CUEBOT_HOSTNAME"
+echo "Cuebot Port: $CUEBOT_PORT"
 echo "RQD Container Name: $RQD_NAME"
 echo "OpenCue Filesystem Root: $CUE_FS_ROOT"
 echo ""
@@ -99,7 +107,11 @@ else
     
     # Run the RQD container
     echo "Starting RQD container..."
-    docker run -td --name "$RQD_NAME" --env CUEBOT_HOSTNAME="$CUEBOT_HOSTNAME" --volume "${CUE_FS_ROOT}:${CUE_FS_ROOT}" opencue/rqd
+    docker run -td --name "$RQD_NAME" \
+        --env CUEBOT_HOSTNAME="$CUEBOT_HOSTNAME" \
+        --env CUEBOT_PORT="$CUEBOT_PORT" \
+        --volume "${CUE_FS_ROOT}:${CUE_FS_ROOT}" \
+        opencue/rqd
 fi
 
 # Verify the container is running

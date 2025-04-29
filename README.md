@@ -20,17 +20,19 @@ The RQD client connects to the Cuebot server, which manages the render queue. Be
 Starts an RQD client using the pre-built Docker image from DockerHub.
 
 ```powershell
-.\start-rqd.ps1 -CuebotHostname <hostname or IP> [-RqdName <container name>]
+.\start-rqd.ps1 -CuebotHostname <hostname or IP> [-CuebotPort <port>] [-RqdName <container name>]
 ```
 
 Options:
 - `-CuebotHostname`: The hostname or IP address of the Cuebot server (required if the CUEBOT_HOSTNAME environment variable is not set)
+- `-CuebotPort`: The port to connect to on the Cuebot server (default: 8443)
 - `-RqdName`: The name to give to the RQD container (default: rqd01)
 - `-Help`: Display help message
 
 Example:
 ```powershell
 .\start-rqd.ps1 -CuebotHostname localhost
+.\start-rqd.ps1 -CuebotHostname localhost -CuebotPort 8080
 ```
 
 ### stop-rqd.ps1
@@ -67,17 +69,19 @@ Options:
 Starts an RQD client using the pre-built Docker image from DockerHub.
 
 ```bash
-./start-rqd.sh -c <hostname or IP> [-n <container name>]
+./start-rqd.sh -c <hostname or IP> [-p <port>] [-n <container name>]
 ```
 
 Options:
 - `-c, --cuebot-hostname`: The hostname or IP address of the Cuebot server
+- `-p, --cuebot-port`: The port to connect to on the Cuebot server (default: 8443)
 - `-n, --name`: The name to give to the RQD container (default: rqd01)
 - `-h, --help`: Display help message
 
 Example:
 ```bash
 ./start-rqd.sh -c localhost
+./start-rqd.sh -c localhost -p 8080
 ```
 
 ### stop-rqd.sh
@@ -143,6 +147,22 @@ The RQD container needs access to the filesystem where render assets are stored 
 - On Linux, it mounts the `$HOME/opencue-demo` directory
 
 These directories are created if they don't exist.
+
+## Connecting to Cuebot
+
+The RQD client needs to know how to connect to the Cuebot server. By default, it will connect to the Cuebot server at the specified hostname using port 8443 (HTTPS). If your Cuebot server is configured to use a different port, you can specify it using the `-CuebotPort` (Windows) or `-p`/`--cuebot-port` (Linux) parameter.
+
+For example, to connect to a Cuebot server running on port 8080 (HTTP):
+
+**Windows:**
+```powershell
+.\start-rqd.ps1 -CuebotHostname localhost -CuebotPort 8080
+```
+
+**Linux:**
+```bash
+./start-rqd.sh -c localhost -p 8080
+```
 
 ## Logs and Debugging
 

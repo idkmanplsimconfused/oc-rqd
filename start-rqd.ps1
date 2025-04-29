@@ -4,16 +4,18 @@
 # Parse command line arguments
 param (
     [string]$CuebotHostname = "",
+    [string]$CuebotPort = "8443",
     [string]$RqdName = "rqd01",
     [switch]$Help
 )
 
 # Display help if requested
 if ($Help) {
-    Write-Host "Usage: .\start-rqd.ps1 [-CuebotHostname <hostname or IP>] [-RqdName <RQD container name>] [-Help]"
+    Write-Host "Usage: .\start-rqd.ps1 [-CuebotHostname <hostname or IP>] [-CuebotPort <port>] [-RqdName <RQD container name>] [-Help]"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -CuebotHostname    The hostname or IP address of the Cuebot server (required if CUEBOT_HOSTNAME env var not set)"
+    Write-Host "  -CuebotPort        The port to connect to on the Cuebot server (default: 8443)"
     Write-Host "  -RqdName           The name to give to the RQD container (default: rqd01)"
     Write-Host "  -Help              Display this help message"
     exit 0
@@ -41,11 +43,13 @@ if (-not (Test-Path $CueFilesystemRoot)) {
 
 # Set environment variables
 $env:CUEBOT_HOSTNAME = $CuebotHostname
+$env:CUEBOT_PORT = $CuebotPort
 $env:CUE_FS_ROOT = $CueFilesystemRoot
 
 Write-Host "RQD Configuration Summary:"
 Write-Host "=========================="
 Write-Host "Cuebot Hostname: $CuebotHostname"
+Write-Host "Cuebot Port: $CuebotPort"
 Write-Host "RQD Container Name: $RqdName"
 Write-Host "OpenCue Filesystem Root: $CueFilesystemRoot"
 Write-Host ""
@@ -92,7 +96,11 @@ if ($containerExists) {
     
     # Run the RQD container
     Write-Host "Starting RQD container..."
-    docker run -td --name $RqdName --env CUEBOT_HOSTNAME=$CuebotHostname --volume "${CueFilesystemRoot}:${CueFilesystemRoot}" opencue/rqd
+    docker run -td --name $RqdName `
+        --env CUEBOT_HOSTNAME=$CuebotHostname `
+        --env CUEBOT_PORT=$CuebotPort `
+        --volume "${CueFilesystemRoot}:${CueFilesystemRoot}" `
+        opencue/rqd
 }
 
 # Verify the container is running
