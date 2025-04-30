@@ -6,17 +6,21 @@ param (
     [string]$CuebotHostname = "",
     [string]$CuebotPort = "8443",
     [string]$RqdName = "rqd01",
+    [string]$Network = "",
     [switch]$Help
 )
 
 # Display help if requested
 if ($Help) {
-    Write-Host "Usage: .\start-rqd.ps1 [-CuebotHostname <hostname or IP>] [-CuebotPort <port>] [-RqdName <RQD container name>] [-Help]"
+    Write-Host "Usage: .\start-rqd.ps1 [-CuebotHostname <hostname or IP>] [-CuebotPort <port>] [-RqdName <RQD container name>] [-Network <docker network>] [-Help]"
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -CuebotHostname    The hostname or IP address of the Cuebot server (required if CUEBOT_HOSTNAME env var not set)"
+    Write-Host "                     - For same-machine containers: use 'opencue-cuebot' and specify the Network parameter"
+    Write-Host "                     - For different machines: use the actual IP address or hostname of the remote machine"
     Write-Host "  -CuebotPort        The port to connect to on the Cuebot server (default: 8443)"
     Write-Host "  -RqdName           The name to give to the RQD container (default: rqd01)"
+    Write-Host "  -Network           Docker network to connect RQD to (only needed if Cuebot is on same machine)"
     Write-Host "  -Help              Display this help message"
     exit 0
 }
@@ -51,6 +55,9 @@ Write-Host "=========================="
 Write-Host "Cuebot Hostname: $CuebotHostname"
 Write-Host "Cuebot Port: $CuebotPort"
 Write-Host "RQD Container Name: $RqdName"
+if (-not [string]::IsNullOrEmpty($Network)) {
+    Write-Host "Docker Network: $Network"
+}
 Write-Host "OpenCue Filesystem Root: $CueFilesystemRoot"
 Write-Host ""
 
@@ -64,6 +71,27 @@ try {
     Write-Host "Error: Docker is not installed or not running."
     Write-Host "Please install Docker Desktop for Windows and start it before running this script."
     exit 1
+}
+
+# Check if the specified Docker network exists if a network was provided
+if (-not [string]::IsNullOrEmpty($Network)) {
+    $networkExists = $false
+    try {
+        $networkInfo = docker network inspect $Network 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $networkExists = $true
+        }
+    } catch {
+        # Network doesn't exist, which is a problem
+    }
+
+    if (-not $networkExists) {
+        Write-Host "Error: Docker network '$Network' doesn't exist."
+        Write-Host "Please make sure your Cuebot services are running first."
+        Write-Host "Possible networks available:"
+        docker network ls
+        exit 1
+    }
 }
 
 # Check if the RQD container already exists
@@ -94,13 +122,26 @@ if ($containerExists) {
     Write-Host "Pulling RQD image from DockerHub..."
     docker pull opencue/rqd
     
-    # Run the RQD container
+    # Create Docker volume mount string compatible with Windows
+    $volumeMount = "$($CueFilesystemRoot -replace '\\', '/' -replace ':', ''):/opencue-demo"
+    
+    # Build the Docker run command
+    $dockerCmd = "docker run -td --name $RqdName " +
+               "--env CUEBOT_HOSTNAME=$CuebotHostname " +
+               "--env CUEBOT_PORT=$CuebotPort " +
+               "--volume `"/$volumeMount`" "
+    
+    # Add network parameter if specified
+    if (-not [string]::IsNullOrEmpty($Network)) {
+        $dockerCmd += "--network $Network "
+    }
+    
+    $dockerCmd += "opencue/rqd"
+    
+    # Run the RQD container with proper settings
     Write-Host "Starting RQD container..."
-    docker run -td --name $RqdName `
-        --env CUEBOT_HOSTNAME=$CuebotHostname `
-        --env CUEBOT_PORT=$CuebotPort `
-        --volume "${CueFilesystemRoot}:${CueFilesystemRoot}" `
-        opencue/rqd
+    Write-Host "Command: $dockerCmd"
+    Invoke-Expression $dockerCmd
 }
 
 # Verify the container is running

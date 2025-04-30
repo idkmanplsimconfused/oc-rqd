@@ -20,19 +20,25 @@ The RQD client connects to the Cuebot server, which manages the render queue. Be
 Starts an RQD client using the pre-built Docker image from DockerHub.
 
 ```powershell
-.\start-rqd.ps1 -CuebotHostname <hostname or IP> [-CuebotPort <port>] [-RqdName <container name>]
+.\start-rqd.ps1 -CuebotHostname <hostname or IP> [-CuebotPort <port>] [-RqdName <container name>] [-Network <docker network>]
 ```
 
 Options:
 - `-CuebotHostname`: The hostname or IP address of the Cuebot server (required if the CUEBOT_HOSTNAME environment variable is not set)
+  - For same-machine containers: use 'opencue-cuebot' and specify the Network parameter
+  - For different machines: use the actual IP address or hostname
 - `-CuebotPort`: The port to connect to on the Cuebot server (default: 8443)
 - `-RqdName`: The name to give to the RQD container (default: rqd01)
+- `-Network`: Docker network to connect RQD to (only needed if Cuebot is on same machine)
 - `-Help`: Display help message
 
-Example:
+Examples:
 ```powershell
-.\start-rqd.ps1 -CuebotHostname localhost
-.\start-rqd.ps1 -CuebotHostname localhost -CuebotPort 8080
+# When Cuebot is on the same machine (running in Docker)
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network
+
+# When Cuebot is on a different machine
+.\start-rqd.ps1 -CuebotHostname 192.168.1.100
 ```
 
 ### stop-rqd.ps1
@@ -69,19 +75,25 @@ Options:
 Starts an RQD client using the pre-built Docker image from DockerHub.
 
 ```bash
-./start-rqd.sh -c <hostname or IP> [-p <port>] [-n <container name>]
+./start-rqd.sh -c <hostname or IP> [-p <port>] [-n <container name>] [-w <network>]
 ```
 
 Options:
 - `-c, --cuebot-hostname`: The hostname or IP address of the Cuebot server
+  - For same-machine containers: use 'opencue-cuebot' and specify the network
+  - For different machines: use the actual IP address or hostname
 - `-p, --cuebot-port`: The port to connect to on the Cuebot server (default: 8443)
 - `-n, --name`: The name to give to the RQD container (default: rqd01)
+- `-w, --network`: Docker network to connect RQD to (only needed if Cuebot is on same machine)
 - `-h, --help`: Display help message
 
-Example:
+Examples:
 ```bash
-./start-rqd.sh -c localhost
-./start-rqd.sh -c localhost -p 8080
+# When Cuebot is on the same machine (running in Docker)
+./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network
+
+# When Cuebot is on a different machine
+./start-rqd.sh -c 192.168.1.100
 ```
 
 ### stop-rqd.sh
@@ -129,14 +141,14 @@ You can run multiple RQD clients on the same machine by specifying different con
 
 **Windows:**
 ```powershell
-.\start-rqd.ps1 -CuebotHostname localhost -RqdName rqd01
-.\start-rqd.ps1 -CuebotHostname localhost -RqdName rqd02
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -RqdName rqd01
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -RqdName rqd02
 ```
 
 **Linux:**
 ```bash
-./start-rqd.sh -c localhost -n rqd01
-./start-rqd.sh -c localhost -n rqd02
+./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -n rqd01
+./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -n rqd02
 ```
 
 ## File System Access
@@ -150,18 +162,52 @@ These directories are created if they don't exist.
 
 ## Connecting to Cuebot
 
-The RQD client needs to know how to connect to the Cuebot server. By default, it will connect to the Cuebot server at the specified hostname using port 8443 (HTTPS). If your Cuebot server is configured to use a different port, you can specify it using the `-CuebotPort` (Windows) or `-p`/`--cuebot-port` (Linux) parameter.
+### Same Machine Setup
 
-For example, to connect to a Cuebot server running on port 8080 (HTTP):
+If Cuebot is running on the same machine as RQD (both in Docker containers):
+
+1. You need to connect them to the same Docker network
+2. Use the container name as the hostname
 
 **Windows:**
 ```powershell
-.\start-rqd.ps1 -CuebotHostname localhost -CuebotPort 8080
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network
 ```
 
 **Linux:**
 ```bash
-./start-rqd.sh -c localhost -p 8080
+./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network
+```
+
+### Different Machine Setup
+
+If Cuebot is running on a different machine:
+
+1. Use the IP address or hostname of the remote machine
+2. Ensure the Cuebot port (default: 8443) is accessible from the RQD machine
+
+**Windows:**
+```powershell
+.\start-rqd.ps1 -CuebotHostname 192.168.1.100
+```
+
+**Linux:**
+```bash
+./start-rqd.sh -c 192.168.1.100
+```
+
+### Custom Port Configuration
+
+If your Cuebot server is configured to use a different port, you can specify it:
+
+**Windows:**
+```powershell
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -CuebotPort 8080
+```
+
+**Linux:**
+```bash
+./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -p 8080
 ```
 
 ## Logs and Debugging

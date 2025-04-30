@@ -8,8 +8,11 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -c, --cuebot-hostname HOSTNAME  The hostname or IP address of the Cuebot server"
+    echo "                                  - For same-machine containers: use 'opencue-cuebot' and specify the network"
+    echo "                                  - For different machines: use the actual IP address or hostname"
     echo "  -p, --cuebot-port PORT          The port to connect to on the Cuebot server (default: 8443)"
     echo "  -n, --name NAME                 The name to give to the RQD container (default: rqd01)"
+    echo "  -w, --network NETWORK           Docker network to connect RQD to (only needed if Cuebot is on same machine)"
     echo "  -h, --help                      Display this help message"
     exit 0
 }
@@ -18,6 +21,7 @@ show_help() {
 CUEBOT_HOSTNAME=""
 CUEBOT_PORT="8443"
 RQD_NAME="rqd01"
+NETWORK=""
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -32,6 +36,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--name)
             RQD_NAME="$2"
+            shift 2
+            ;;
+        -w|--network)
+            NETWORK="$2"
             shift 2
             ;;
         -h|--help)
@@ -73,6 +81,9 @@ echo "=========================="
 echo "Cuebot Hostname: $CUEBOT_HOSTNAME"
 echo "Cuebot Port: $CUEBOT_PORT"
 echo "RQD Container Name: $RQD_NAME"
+if [ ! -z "$NETWORK" ]; then
+    echo "Docker Network: $NETWORK"
+fi
 echo "OpenCue Filesystem Root: $CUE_FS_ROOT"
 echo ""
 
@@ -87,6 +98,17 @@ if ! docker info &> /dev/null; then
     echo "Error: Docker is not running."
     echo "Please start the Docker service and try again."
     exit 1
+fi
+
+# Check if the specified Docker network exists if provided
+if [ ! -z "$NETWORK" ]; then
+    if ! docker network inspect "$NETWORK" &> /dev/null; then
+        echo "Error: Docker network '$NETWORK' doesn't exist."
+        echo "Please make sure your Cuebot services are running first."
+        echo "Possible networks available:"
+        docker network ls
+        exit 1
+    fi
 fi
 
 # Check if the RQD container already exists
@@ -105,13 +127,23 @@ else
     echo "Pulling RQD image from DockerHub..."
     docker pull opencue/rqd
     
+    # Build the docker run command
+    DOCKER_CMD="docker run -td --name $RQD_NAME"
+    DOCKER_CMD="$DOCKER_CMD --env CUEBOT_HOSTNAME=$CUEBOT_HOSTNAME"
+    DOCKER_CMD="$DOCKER_CMD --env CUEBOT_PORT=$CUEBOT_PORT"
+    DOCKER_CMD="$DOCKER_CMD --volume ${CUE_FS_ROOT}:${CUE_FS_ROOT}"
+    
+    # Add network parameter if specified
+    if [ ! -z "$NETWORK" ]; then
+        DOCKER_CMD="$DOCKER_CMD --network $NETWORK"
+    fi
+    
+    DOCKER_CMD="$DOCKER_CMD opencue/rqd"
+    
     # Run the RQD container
     echo "Starting RQD container..."
-    docker run -td --name "$RQD_NAME" \
-        --env CUEBOT_HOSTNAME="$CUEBOT_HOSTNAME" \
-        --env CUEBOT_PORT="$CUEBOT_PORT" \
-        --volume "${CUE_FS_ROOT}:${CUE_FS_ROOT}" \
-        opencue/rqd
+    echo "Command: $DOCKER_CMD"
+    eval $DOCKER_CMD
 fi
 
 # Verify the container is running
