@@ -13,6 +13,7 @@ show_help() {
     echo "  -p, --cuebot-port PORT          The port to connect to on the Cuebot server (default: 8443)"
     echo "  -n, --name NAME                 The name to give to the RQD container (default: rqd01)"
     echo "  -w, --network NETWORK           Docker network to connect RQD to (only needed if Cuebot is on same machine)"
+    echo "  -b, --build                     Build the custom RQD image locally instead of pulling from DockerHub"
     echo "  -h, --help                      Display this help message"
     exit 0
 }
@@ -22,6 +23,7 @@ CUEBOT_HOSTNAME=""
 CUEBOT_PORT="8443"
 RQD_NAME="rqd01"
 NETWORK=""
+BUILD=false
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -41,6 +43,10 @@ while [[ $# -gt 0 ]]; do
         -w|--network)
             NETWORK="$2"
             shift 2
+            ;;
+        -b|--build)
+            BUILD=true
+            shift
             ;;
         -h|--help)
             show_help
@@ -65,7 +71,7 @@ if [ -z "$CUEBOT_HOSTNAME" ]; then
 fi
 
 # Set up the filesystem root for OpenCue
-CUE_FS_ROOT="${HOME}/opencue-demo"
+CUE_FS_ROOT="${HOME}/opencue-rqd"
 if [ ! -d "$CUE_FS_ROOT" ]; then
     echo "Creating OpenCue filesystem root directory at $CUE_FS_ROOT..."
     mkdir -p "$CUE_FS_ROOT"
@@ -85,6 +91,7 @@ if [ ! -z "$NETWORK" ]; then
     echo "Docker Network: $NETWORK"
 fi
 echo "OpenCue Filesystem Root: $CUE_FS_ROOT"
+echo "Build Local Image: $BUILD"
 echo ""
 
 # Check if Docker is installed and running
@@ -111,6 +118,15 @@ if [ ! -z "$NETWORK" ]; then
     fi
 fi
 
+# Build the custom RQD image if requested
+if [ "$BUILD" = true ]; then
+    echo "Building custom RQD image from local Dockerfile..."
+    docker build -t opencue/rqd-custom ./
+    RQD_IMAGE="opencue/rqd-custom"
+else
+    RQD_IMAGE="opencue/rqd"
+fi
+
 # Check if the RQD container already exists
 if docker container inspect "$RQD_NAME" &> /dev/null; then
     echo "RQD container '$RQD_NAME' already exists."
@@ -123,9 +139,11 @@ if docker container inspect "$RQD_NAME" &> /dev/null; then
         docker start "$RQD_NAME"
     fi
 else
-    # Pull the RQD image from DockerHub
-    echo "Pulling RQD image from DockerHub..."
-    docker pull opencue/rqd
+    # If not building custom, pull the RQD image from DockerHub
+    if [ "$BUILD" = false ]; then
+        echo "Pulling RQD image from DockerHub..."
+        docker pull opencue/rqd
+    fi
     
     # Build the docker run command
     DOCKER_CMD="docker run -td --name $RQD_NAME"
@@ -138,7 +156,7 @@ else
         DOCKER_CMD="$DOCKER_CMD --network $NETWORK"
     fi
     
-    DOCKER_CMD="$DOCKER_CMD opencue/rqd"
+    DOCKER_CMD="$DOCKER_CMD $RQD_IMAGE"
     
     # Run the RQD container
     echo "Starting RQD container..."

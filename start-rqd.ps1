@@ -3,43 +3,42 @@
 
 # Parse command line arguments
 param (
-    [string]$CuebotHostname = "",
+    [string]$CuebotHostname = $env:CUEBOT_HOSTNAME,
     [string]$CuebotPort = "8443",
     [string]$RqdName = "rqd01",
     [string]$Network = "",
+    [switch]$Build,
     [switch]$Help
 )
 
 # Display help if requested
 if ($Help) {
-    Write-Host "Usage: .\start-rqd.ps1 [-CuebotHostname <hostname or IP>] [-CuebotPort <port>] [-RqdName <RQD container name>] [-Network <docker network>] [-Help]"
+    Write-Host "Usage: .\start-rqd.ps1 -CuebotHostname <hostname or IP> [-CuebotPort <port>] [-RqdName <container name>] [-Network <docker network>] [-Build] [-Help]"
     Write-Host ""
     Write-Host "Options:"
-    Write-Host "  -CuebotHostname    The hostname or IP address of the Cuebot server (required if CUEBOT_HOSTNAME env var not set)"
-    Write-Host "                     - For same-machine containers: use 'opencue-cuebot' and specify the Network parameter"
-    Write-Host "                     - For different machines: use the actual IP address or hostname of the remote machine"
-    Write-Host "  -CuebotPort        The port to connect to on the Cuebot server (default: 8443)"
-    Write-Host "  -RqdName           The name to give to the RQD container (default: rqd01)"
-    Write-Host "  -Network           Docker network to connect RQD to (only needed if Cuebot is on same machine)"
-    Write-Host "  -Help              Display this help message"
+    Write-Host "  -CuebotHostname   The hostname or IP address of the Cuebot server (required if the CUEBOT_HOSTNAME environment variable is not set)"
+    Write-Host "                    - For same-machine containers: use 'opencue-cuebot' and specify the Network parameter"
+    Write-Host "                    - For different machines: use the actual IP address or hostname"
+    Write-Host "  -CuebotPort       The port to connect to on the Cuebot server (default: 8443)"
+    Write-Host "  -RqdName          The name to give to the RQD container (default: rqd01)"
+    Write-Host "  -Network          Docker network to connect RQD to (only needed if Cuebot is on same machine)"
+    Write-Host "  -Build            Build the Docker image locally instead of pulling from DockerHub"
+    Write-Host "  -Help             Display this help message"
     exit 0
 }
 
 # Check if CUEBOT_HOSTNAME is set in environment or via parameter
-if ([string]::IsNullOrEmpty($CuebotHostname)) {
-    $CuebotHostname = $env:CUEBOT_HOSTNAME
-    if ([string]::IsNullOrEmpty($CuebotHostname)) {
-        Write-Host "Error: Cuebot hostname not provided. Either:"
-        Write-Host "  1. Set the CUEBOT_HOSTNAME environment variable, or"
-        Write-Host "  2. Provide it as a parameter: .\start-rqd.ps1 -CuebotHostname <hostname or IP>"
-        Write-Host ""
-        Write-Host "Run .\start-rqd.ps1 -Help for more information."
-        exit 1
-    }
+if (-not $CuebotHostname) {
+    Write-Host "Error: Cuebot hostname not provided. Either:"
+    Write-Host "  1. Set the CUEBOT_HOSTNAME environment variable, or"
+    Write-Host "  2. Provide it as a parameter: .\start-rqd.ps1 -CuebotHostname <hostname or IP>"
+    Write-Host ""
+    Write-Host "Run .\start-rqd.ps1 -Help for more information."
+    exit 1
 }
 
 # Set up the filesystem root for OpenCue
-$CueFilesystemRoot = Join-Path $env:USERPROFILE "opencue-demo"
+$CueFilesystemRoot = Join-Path $env:USERPROFILE "opencue-rqd"
 if (-not (Test-Path $CueFilesystemRoot)) {
     Write-Host "Creating OpenCue filesystem root directory at $CueFilesystemRoot..."
     New-Item -ItemType Directory -Path $CueFilesystemRoot | Out-Null
@@ -59,6 +58,7 @@ if (-not [string]::IsNullOrEmpty($Network)) {
     Write-Host "Docker Network: $Network"
 }
 Write-Host "OpenCue Filesystem Root: $CueFilesystemRoot"
+Write-Host "Build Local Image: $Build"
 Write-Host ""
 
 # Check if Docker is installed and running
@@ -105,6 +105,13 @@ try {
     # Container doesn't exist, which is fine
 }
 
+# Build the custom RQD image if requested
+if ($Build) {
+    Write-Host "Building custom RQD image from local Dockerfile..."
+    docker build -t opencue/rqd ./
+    $rqdImage = "opencue/rqd"
+}
+
 if ($containerExists) {
     Write-Host "RQD container '$RqdName' already exists."
     
@@ -118,12 +125,8 @@ if ($containerExists) {
         docker start $RqdName
     }
 } else {
-    # Pull the RQD image from DockerHub
-    Write-Host "Pulling RQD image from DockerHub..."
-    docker pull opencue/rqd
-    
     # Create Docker volume mount string compatible with Windows
-    $volumeMount = "$($CueFilesystemRoot -replace '\\', '/' -replace ':', ''):/opencue-demo"
+    $volumeMount = "$($CueFilesystemRoot -replace '\\', '/' -replace ':', ''):/opencue-rqd"
     
     # Build the Docker run command
     $dockerCmd = "docker run -td --name $RqdName " +
@@ -136,7 +139,7 @@ if ($containerExists) {
         $dockerCmd += "--network $Network "
     }
     
-    $dockerCmd += "opencue/rqd"
+    $dockerCmd += "$rqdImage"
     
     # Run the RQD container with proper settings
     Write-Host "Starting RQD container..."

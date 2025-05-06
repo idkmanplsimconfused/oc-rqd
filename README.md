@@ -35,7 +35,7 @@ Options:
 Examples:
 ```powershell
 # When Cuebot is on the same machine (running in Docker)
-.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot_opencue-network
 
 # When Cuebot is on a different machine
 .\start-rqd.ps1 -CuebotHostname 192.168.1.100
@@ -79,7 +79,7 @@ Starts an RQD client using the pre-built Docker image from DockerHub.
 ```
 
 Options:
-- `-c, --cuebot-hostname`: The hostname or IP address of the Cuebot server
+- `-c, --cuebot-hostname`: The hostname or IP address of the Cuebot
   - For same-machine containers: use 'opencue-cuebot' and specify the network
   - For different machines: use the actual IP address or hostname
 - `-p, --cuebot-port`: The port to connect to on the Cuebot server (default: 8443)
@@ -90,7 +90,7 @@ Options:
 Examples:
 ```bash
 # When Cuebot is on the same machine (running in Docker)
-./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network
+./start-rqd.sh -c opencue-cuebot -w cuebot_opencue-network
 
 # When Cuebot is on a different machine
 ./start-rqd.sh -c 192.168.1.100
@@ -141,22 +141,22 @@ You can run multiple RQD clients on the same machine by specifying different con
 
 **Windows:**
 ```powershell
-.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -RqdName rqd01
-.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -RqdName rqd02
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot_opencue-network -RqdName rqd01
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot_opencue-network -RqdName rqd02
 ```
 
 **Linux:**
 ```bash
-./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -n rqd01
-./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -n rqd02
+./start-rqd.sh -c opencue-cuebot -w cuebot_opencue-network -n rqd01
+./start-rqd.sh -c opencue-cuebot -w cuebot_opencue-network -n rqd02
 ```
 
 ## File System Access
 
 The RQD container needs access to the filesystem where render assets are stored and log files are written. 
 
-- On Windows, it mounts the `%USERPROFILE%\opencue-demo` directory
-- On Linux, it mounts the `$HOME/opencue-demo` directory
+- On Windows, it mounts the `%USERPROFILE%\opencue-rqd` directory
+- On Linux, it mounts the `$HOME/opencue-rqd` directory
 
 These directories are created if they don't exist.
 
@@ -171,12 +171,12 @@ If Cuebot is running on the same machine as RQD (both in Docker containers):
 
 **Windows:**
 ```powershell
-.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot_opencue-network
 ```
 
 **Linux:**
 ```bash
-./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network
+./start-rqd.sh -c opencue-cuebot -w cuebot_opencue-network
 ```
 
 ### Different Machine Setup
@@ -202,12 +202,12 @@ If your Cuebot server is configured to use a different port, you can specify it:
 
 **Windows:**
 ```powershell
-.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot-server_opencue-network -CuebotPort 8080
+.\start-rqd.ps1 -CuebotHostname opencue-cuebot -Network cuebot_opencue-network -CuebotPort 8080
 ```
 
 **Linux:**
 ```bash
-./start-rqd.sh -c opencue-cuebot -w cuebot-server_opencue-network -p 8080
+./start-rqd.sh -c opencue-cuebot -w cuebot_opencue-network -p 8080
 ```
 
 ## Logs and Debugging
